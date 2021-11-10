@@ -5,9 +5,16 @@ The technology report is comming soon.
 
 * **Image Inpainting results**
 
-​		
+  <p align='center'>  
+    <img src='https://user-images.githubusercontent.com/30292465/141147333-ce25efab-2434-4674-b43d-398758fa0834.png' width='500'/>
+  </p>
 
 * **Fine-grained Control**
+
+  <p align='center'>  
+    <img src='https://user-images.githubusercontent.com/30292465/141147069-d119b408-151c-4d28-a7d6-7ea01cc02daf.png' width='700'/>
+  </p>
+
 
 
 
@@ -38,29 +45,26 @@ pip install -r requirements.txt
 
 ### Download Prerequisite Models 
 
-* Follow [Deep3DFaceRecon](https://github.com/sicxu/Deep3DFaceRecon_pytorch#prepare-prerequisite-models) to prepare `./BFM` folder
+* Follow [Deep3DFaceRecon](https://github.com/sicxu/Deep3DFaceRecon_pytorch#prepare-prerequisite-models) to prepare `./BFM` folder. Download `01_MorphableModel.mat` and Expression Basis `Exp_Pca.bin`. Put the obtained files into the `./Deep3DFaceRecon_pytorch/BFM` floder. Then link the folder to the root path.
 
-  		* Download the [BFM folder](https://github.com/sicxu/Deep3DFaceRecon_pytorch/tree/master/BFM) and put it under the root path.
+```bash
+ln -s /PATH_TO_REPO_ROOT/Deep3DFaceRecon_pytorch/BFM /PATH_TO_REPO_ROOT
+```
 
-  		* Follow the [instruction](https://github.com/sicxu/Deep3DFaceRecon_pytorch#prepare-prerequisite-models) to prepare 3D face models `01_MorphableModel.mat` and Expression Basis `Exp_Pca.bin`. Put the obtained files into the `./BFM` floder.
+* Clone the Arcface repo
 
-* Arcface Pytorch
 
-  * Clone the Arcface  repo
-  
-    ```bash
-    cd third_part
-    git clone https://github.com/deepinsight/insightface.git
-    cp -r ./insightface/recognition/arcface_torch/ ./
-    ```
-  
-  * The [Arcface](https://github.com/deepinsight/insightface/tree/master/recognition/arcface_torch) is used to extract identity features for loss computation. Download the pre-trained model from Arcface using this [link](https://github.com/deepinsight/insightface/tree/master/recognition/arcface_torch#ms1mv3). By default, the resnet50 backbone ([ms1mv3_arcface_r50_fp16](https://onedrive.live.com/?authkey=!AFZjr283nwZHqbA&id=4A83B6B633B029CC!5583&cid=4A83B6B633B029CC)) is used. Put the obtained weights into `./third_part/arcface_torch/ms1mv3_arcface_r50_fp16/backbone.pth`			
+```bash
+cd third_part
+git clone https://github.com/deepinsight/insightface.git
+cp -r ./insightface/recognition/arcface_torch/ ./
+```
 
-* Download the pretrained weights.
+The [Arcface](https://github.com/deepinsight/insightface/tree/master/recognition/arcface_torch) is used to extract identity features for loss computation. Download the pre-trained model from Arcface using this [link](https://github.com/deepinsight/insightface/tree/master/recognition/arcface_torch#ms1mv3). By default, the resnet50 backbone ([ms1mv3_arcface_r50_fp16](https://onedrive.live.com/?authkey=!AFZjr283nwZHqbA&id=4A83B6B633B029CC!5583&cid=4A83B6B633B029CC)) is used. Put the obtained weights into `./third_part/arcface_torch/ms1mv3_arcface_r50_fp16/backbone.pth`			
 
-  * Please download the pre-trained models from the  [Google Driven](https://drive.google.com/drive/folders/1fyVI81I5gP4is4zN2kvM3WiMRdPXguVf?usp=sharing). 
+* Download the pretrained weights of our model from [Google Driven](https://drive.google.com/drive/folders/1fyVI81I5gP4is4zN2kvM3WiMRdPXguVf?usp=sharing). Save the obtained files into folder `./result`.
 
-  ​	
+
 
 ###  Inference 
 
@@ -82,58 +86,51 @@ CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --m
 ### Dataset Preparation
 
 * Download dataset. We use [Celeba-HQ](https://github.com/tkarras/progressive_growing_of_gans) and [FFHQ](https://github.com/NVlabs/ffhq-dataset) for training and inference. Please download the datasets (image format) and put them under .`/dataset` folder.
+* Obtain 3D faces by using [Deep3DFaceRecon](https://github.com/sicxu/Deep3DFaceRecon_pytorch).  Follow the Deep3DFaceRecon repo to download the trained weights. And save it as: `./Deep3DFaceRecon_pytorch/checkpoints/face_recon/epoch_20.pth`
 
-* Obtain 3D faces by using [Deep3DFaceRecon](https://github.com/sicxu/Deep3DFaceRecon_pytorch). 
 
-  * Extract keypoints from the face images for cropping.
+```bash
+# 1. Extract keypoints from the face images for cropping.
+cd scripts
+# extracted keypoints from celeba
+python extract_kp.py \
+--data_root PATH_TO_CELEBA_ROOT \
+--output_dir PATH_TO_KEYPOINTS \
+--dataset celeba \
+--device_ids 0,1 \
+--workers 6
 
-    ```bash
-    cd scripts
-    # extracted keypoints from celeba
-    python extract_kp.py \
-    --data_root PATH_TO_CELEBA_ROOT \
-    --output_dir PATH_TO_KEYPOINTS \
-    --dataset celeba \
-    --device_ids 0,1 \
-    --workers 6
-    ```
+# 2. Extract 3DMM coefficients from the face images.
+cd .. #repo root
+# we provide some scripts for easy of use. However, one can use the original repo to extract the coefficients.
+cp scripts/inference_options.py ./Deep3DFaceRecon_pytorch/options
+cp scripts/face_recon.py ./Deep3DFaceRecon_pytorch
+cp scripts/facerecon_inference_model.py ./Deep3DFaceRecon_pytorch/models
+cp scripts/pytorch_3d.py ./Deep3DFaceRecon_pytorch/util
+ln -s /PATH_TO_REPO_ROOT/third_part/arcface_torch /PATH_TO_REPO_ROOT/Deep3DFaceRecon_pytorch/models
 
-  * Run Deep3DFaceRecon for 3D image reconstuction.
+cd Deep3DFaceRecon_pytorch
 
-    * Follow the Deep3DFaceRecon repo to download the trained weights. And save it as: `./Deep3DFaceRecon_pytorch/checkpoints/face_recon/epoch_20.pth`
+python face_recon.py \
+--input_dir PATH_TO_CELEBA_ROOT \
+--keypoint_dir PATH_TO_KEYPOINTS \
+--output_dir PATH_TO_3DMM_COEFFICIENT \
+--inference_batch_size 100 \
+--name=face_recon \
+--dataset_name celeba \
+--epoch=20 \
+--model facerecon_inference
 
-    ```bash
-    cd .. #repo root
-    # we provide some scripts for easy of use. However, one can use the original repo to extract the coefficients.
-    cp scripts/inference_options.py ./Deep3DFaceRecon_pytorch/options
-    cp scripts/face_recon.py ./Deep3DFaceRecon_pytorch
-    cp scripts/facerecon_inference_model.py ./Deep3DFaceRecon_pytorch/models
-    cp scripts/pytorch_3d.py ./Deep3DFaceRecon_pytorch/util
-    ln -s /PATH_TO_REPO_ROOT/third_part/arcface_torch /PATH_TO_REPO_ROOT/Deep3DFaceRecon_pytorch/models
-    
-    cd Deep3DFaceRecon_pytorch
-    
-    python face_recon.py \
-    --input_dir PATH_TO_CELEBA_ROOT \
-    --keypoint_dir PATH_TO_KEYPOINTS \
-    --output_dir PATH_TO_3DMM_COEFFICIENT \
-    --inference_batch_size 100 \
-    --name=face_recon \
-    --dataset_name celeba \
-    --epoch=20 \
-    --model facerecon_inference
-    ```
+# 3. Save images and the coefficients into a lmdb file.
+cd .. #repo root
+python prepare_data.py \
+--root PATH_TO_CELEBA_ROOT \
+--coeff_file PATH_TO_3DMM_COEFFICIENT \
+--dataset celeba \
+--out PATH_TO_CELEBA_LMDB_ROOT
+```
 
-  * Save images and the coefficients into a lmdb file.
 
-    ```bash
-    cd .. #repo root
-    python prepare_data.py \
-    --root PATH_TO_CELEBA_ROOT \
-    --coeff_file PATH_TO_3DMM_COEFFICIENT \
-    --dataset celeba \
-    --out PATH_TO_CELEBA_LMDB_ROOT
-    ```
 
 ### Train The Model 
 
@@ -148,4 +145,3 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.launch --nproc_per_node
 --config ./config/facial_image_renderer_celeba.yaml \
 --name facial_image_renderer_celeba
 ```
-
