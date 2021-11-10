@@ -1,0 +1,84 @@
+distributed: True
+image_to_tensorboard: True
+snapshot_save_iter: 40000
+snapshot_save_epoch: 20
+snapshot_save_start_iter: 40000
+snapshot_save_start_epoch: 10
+image_save_iter: 1000
+max_epoch: 100
+logging_iter: 100
+results_dir: ./eval_results
+
+
+camera:
+  bfm_folder: ./BFM
+  camera_d: 10.
+  focal: 1015.
+  center: 128.
+  bfm_model: BFM_model_front.mat
+  z_near: 5.
+  z_far: 15
+
+gen_optimizer:
+    type: adam
+    lr: 0.0001
+    adam_beta1: 0.9
+    adam_beta2: 0.999
+    lr_policy:
+        iteration_mode: False
+        type: step
+        step_size: 1000000
+        gamma: 1
+
+
+trainer:
+    type: trainers.semantic_descriptor_recommender_trainer::Trainer
+    face_id_param:
+      network: r50
+      pretrained_path: ./third_part/arcface_torch/ms1mv3_arcface_r50_fp16/backbone.pth
+      image_size: 256
+      perceptual_input_size: 112
+    loss_weight:
+      weight_face_id: 0.2
+      weight_recon: 1.92
+      weight_reg: 3.0e-4
+      weight_gamma: 10
+      weight_id: 1.0
+      weight_exp: 0.8
+      weight_tex: 1.7e-2
+      weight_lm: 1.4e-3
+      weight_reflect: 5
+      weight_kl: 0.001
+
+
+
+gen:
+    type: generators.semantic_descriptor_recommender::Generator
+    param:
+        model: resnet50
+        init_path: ./Deep3DFaceRecon_pytorch/checkpoints/face_recon/epoch_20.pth
+        n_mlp: 4
+        convert_dim: 512 
+        style_dim: 256               
+        latent_dim: 256
+
+
+dis: 
+  type: generators.dummy::Discriminator
+  param:
+    dummy: None
+
+
+# Data options.
+data:
+    type: data.ffhq_dataset::FFHQDataset
+    path: ./dataset/ffhq/256-256
+    resolution: 256
+    train:
+      batch_size: 8
+      distributed: True
+    val:
+      batch_size: 8
+      distributed: True
+
+

@@ -1,0 +1,96 @@
+distributed: True
+image_to_tensorboard: True
+snapshot_save_iter: 80000
+snapshot_save_epoch: 40
+snapshot_save_start_iter: 80000
+snapshot_save_start_epoch: 20
+image_save_iter: 1000
+max_epoch: 200
+logging_iter: 100
+results_dir: ./eval_results
+
+camera:
+  bfm_folder: ./BFM
+  camera_d: 10.
+  focal: 1015.
+  center: 128.
+  bfm_model: BFM_model_front.mat
+  z_near: 0.01
+  z_far: 50
+
+gen_optimizer:
+    type: adam
+    lr: 0.002
+    adam_beta1: 0.
+    adam_beta2: 0.99
+    lr_policy:
+        iteration_mode: False
+        type: step
+        step_size: 1000000
+        gamma: 1
+
+dis_optimizer:
+    type: adam
+    lr: 0.001882
+    adam_beta1: 0.
+    adam_beta2: 0.9905
+    lr_policy:
+        iteration_mode: False
+        type: step
+        step_size: 1000000
+        gamma: 1
+
+trainer:
+    type: trainers.facial_image_renderer_trainer::Trainer
+    latent: 512 # style_dim
+    mixing: 0.9
+    d_reg_every: 16
+    r1: 10
+    gan_mode: style_gan2
+    loss_weight:
+      weight_gan: 1
+
+gen:
+    type: generators.facial_image_renderer::Generator
+    param:
+        size: 256
+        input_dim: 7
+        style_dim: 512
+        image_style_dim: 1024
+        n_mlp: 8
+        channel_multiplier: 2
+        lr_mlp: 0.01
+        dropout_rate: 0.5
+
+dis: 
+  type: generators.facial_image_renderer::Discriminator
+  param:
+    size: 256
+    input_dim: 6
+    channel_multiplier: 2
+
+
+semantic_recommender:
+    type: generators.semantic_descriptor_recommender::Generator
+    load_path: ./result/semantic_descriptor_recommender_celeba/epoch_00100_iteration_000087500_checkpoint.pt
+    param:
+        model: resnet50
+        init_path: None
+        n_mlp: 4
+        convert_dim: 512 
+        style_dim: 256               
+        latent_dim: 256
+
+# Data options.
+data:
+    type: data.celeba_dataset::CelebaDataset
+    path: ./dataset/celeba/256-256
+    resolution: 256
+    train:
+      batch_size: 8
+      distributed: True
+    val:
+      batch_size: 8
+      distributed: True
+
+
